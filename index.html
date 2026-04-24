@@ -705,14 +705,26 @@ async function syncToCloud(){
   if(!currentUser) return;
   setSyncDot('syncing');
   try{
-    var res = await supa.from('profiles').upsert({
-      user_id: currentUser.id,
-      data: STATE,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
+    // First check if record exists
+    var check = await supa.from('profiles').select('id').eq('user_id', currentUser.id).single();
+    var res;
+    if(check.data){
+      // Update existing
+      res = await supa.from('profiles').update({
+        data: STATE,
+        updated_at: new Date().toISOString()
+      }).eq('user_id', currentUser.id);
+    } else {
+      // Insert new
+      res = await supa.from('profiles').insert({
+        user_id: currentUser.id,
+        data: STATE,
+        updated_at: new Date().toISOString()
+      });
+    }
     if(!res.error) setSyncDot('ok');
-    else setSyncDot('');
-  }catch(e){ setSyncDot(''); }
+    else{ console.error('Sync error:', res.error); setSyncDot(''); }
+  }catch(e){ console.error('Sync exception:', e); setSyncDot(''); }
 }
 
 async function loadFromCloud(){
@@ -1070,24 +1082,36 @@ function showView(name,btn){
 supa.auth.onAuthStateChange(async function(event, session){
   if(session && session.user){
     currentUser = session.user;
-    // Show user email in nav
     var nu = document.getElementById('nav-user-email');
     if(nu) nu.textContent = session.user.email;
-    // Load data from cloud
+    // Always load from cloud first, THEN render
     await loadFromCloud();
     hideAuthScreen();
     advancePlan();
     renderToday();
   } else {
     currentUser = null;
+    STATE = defaultState();
     showAuthScreen();
   }
 });
 
-// Check for existing session on load
+// On page load: check session and load data before showing anything
 document.addEventListener('DOMContentLoaded', async function(){
-  var res = await supa.auth.getSession();
-  if(!res.data.session){
+  try {
+    var res = await supa.auth.getSession();
+    if(res.data && res.data.session && res.data.session.user){
+      currentUser = res.data.session.user;
+      var nu = document.getElementById('nav-user-email');
+      if(nu) nu.textContent = res.data.session.user.email;
+      await loadFromCloud();
+      hideAuthScreen();
+      advancePlan();
+      renderToday();
+    } else {
+      showAuthScreen();
+    }
+  } catch(e){
     showAuthScreen();
   }
 });
