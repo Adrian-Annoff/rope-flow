@@ -705,19 +705,16 @@ async function syncToCloud(){
   if(!currentUser) return;
   setSyncDot('syncing');
   try{
-    // First check if record exists
-    var check = await supa.from('profiles').select('id').eq('user_id', currentUser.id).single();
+    var check = await supa.from('profiles').select('id').eq('User_id', currentUser.id).single();
     var res;
     if(check.data){
-      // Update existing
       res = await supa.from('profiles').update({
         data: STATE,
         updated_at: new Date().toISOString()
-      }).eq('user_id', currentUser.id);
+      }).eq('User_id', currentUser.id);
     } else {
-      // Insert new
       res = await supa.from('profiles').insert({
-        user_id: currentUser.id,
+        User_id: currentUser.id,
         data: STATE,
         updated_at: new Date().toISOString()
       });
@@ -730,21 +727,19 @@ async function syncToCloud(){
 async function loadFromCloud(){
   if(!currentUser) return;
   try{
-    var res = await supa.from('profiles').select('data').eq('user_id', currentUser.id).single();
+    var res = await supa.from('profiles').select('data').eq('User_id', currentUser.id).single();
     if(res.data && res.data.data){
       STATE = res.data.data;
-      // cache locally too
       try{ localStorage.setItem('rope_v3', JSON.stringify(STATE)); }catch(e){}
     } else {
-      // first time — use default
       STATE = defaultState();
     }
   }catch(e){
-    // fallback to local
     try{
       var r = localStorage.getItem('rope_v3');
       if(r) STATE = JSON.parse(r);
-    }catch(e2){}
+      else STATE = defaultState();
+    }catch(e2){ STATE = defaultState(); }
   }
 }
 
