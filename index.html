@@ -779,14 +779,6 @@ async function authSubmit(){
   btn.textContent = '...';
   msg.textContent = '';
 
-  // Timeout after 10 seconds
-  var timeout = setTimeout(function(){
-    btn.disabled = false;
-    btn.textContent = authMode === 'login' ? 'ANMELDEN' : 'REGISTRIEREN';
-    msg.textContent = 'Zeitüberschreitung — bitte nochmal versuchen.';
-    msg.className = 'auth-msg error';
-  }, 10000);
-
   try{
     var res;
     if(authMode === 'login'){
@@ -794,7 +786,6 @@ async function authSubmit(){
     } else {
       res = await supa.auth.signUp({ email: email, password: password });
     }
-    clearTimeout(timeout);
     if(res.error){
       msg.textContent = res.error.message;
       msg.className = 'auth-msg error';
@@ -805,17 +796,22 @@ async function authSubmit(){
       msg.className = 'auth-msg success';
       btn.disabled = false;
       btn.textContent = 'REGISTRIEREN';
-      // Switch to login tab automatically
       setTimeout(function(){
         switchAuthTab('login', document.querySelector('.auth-tab'));
       }, 1500);
-    } else {
-      // Login success — handled by onAuthStateChange
+    } else if(res.data && res.data.session){
+      // Login success — manually proceed instead of waiting for onAuthStateChange
       msg.textContent = 'Anmeldung erfolgreich...';
       msg.className = 'auth-msg success';
+      currentUser = res.data.session.user;
+      var nu = document.getElementById('nav-user-email');
+      if(nu) nu.textContent = currentUser.email;
+      await loadFromCloud();
+      hideAuthScreen();
+      advancePlan();
+      renderToday();
     }
   }catch(e){
-    clearTimeout(timeout);
     msg.textContent = 'Verbindungsfehler: ' + e.message;
     msg.className = 'auth-msg error';
     btn.disabled = false;
