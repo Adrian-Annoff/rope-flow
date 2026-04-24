@@ -705,16 +705,16 @@ async function syncToCloud(){
   if(!currentUser) return;
   setSyncDot('syncing');
   try{
-    var check = await supa.from('profiles').select('id').eq('User_id', currentUser.id).single();
+    var check = await supa.from('profiles').select('id').eq('user_id', currentUser.id).single();
     var res;
     if(check.data){
       res = await supa.from('profiles').update({
         data: STATE,
         updated_at: new Date().toISOString()
-      }).eq('User_id', currentUser.id);
+      }).eq('user_id', currentUser.id);
     } else {
       res = await supa.from('profiles').insert({
-        User_id: currentUser.id,
+        user_id: currentUser.id,
         data: STATE,
         updated_at: new Date().toISOString()
       });
@@ -736,7 +736,7 @@ async function loadFromCloud(){
   });
   var fetchPromise = (async function(){
     try{
-      var res = await supa.from('profiles').select('data').eq('User_id', currentUser.id).single();
+      var res = await supa.from('profiles').select('data').eq('user_id', currentUser.id).single();
       cloudDone = true;
       if(res.data && res.data.data){
         STATE = res.data.data;
