@@ -725,22 +725,34 @@ async function syncToCloud(){
 }
 
 async function loadFromCloud(){
-  if(!currentUser) return;
-  try{
-    var res = await supa.from('profiles').select('data').eq('User_id', currentUser.id).single();
-    if(res.data && res.data.data){
-      STATE = res.data.data;
-      try{ localStorage.setItem('rope_v3', JSON.stringify(STATE)); }catch(e){}
-    } else {
-      STATE = defaultState();
-    }
-  }catch(e){
+  if(!currentUser){ STATE = defaultState(); return; }
+  // Timeout after 5s — always proceed even if cloud fails
+  var cloudDone = false;
+  var timeoutPromise = new Promise(function(resolve){
+    setTimeout(function(){ 
+      if(!cloudDone) { STATE = defaultState(); }
+      resolve(); 
+    }, 5000);
+  });
+  var fetchPromise = (async function(){
     try{
-      var r = localStorage.getItem('rope_v3');
-      if(r) STATE = JSON.parse(r);
-      else STATE = defaultState();
-    }catch(e2){ STATE = defaultState(); }
-  }
+      var res = await supa.from('profiles').select('data').eq('User_id', currentUser.id).single();
+      cloudDone = true;
+      if(res.data && res.data.data){
+        STATE = res.data.data;
+        try{ localStorage.setItem('rope_v3', JSON.stringify(STATE)); }catch(e){}
+      } else {
+        STATE = defaultState();
+      }
+    }catch(e){
+      cloudDone = true;
+      try{
+        var r = localStorage.getItem('rope_v3');
+        STATE = r ? JSON.parse(r) : defaultState();
+      }catch(e2){ STATE = defaultState(); }
+    }
+  })();
+  await Promise.race([fetchPromise, timeoutPromise]);
 }
 
 function setSyncDot(state){
