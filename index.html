@@ -496,11 +496,14 @@ nav {
 }
 .profile-avatar:hover { box-shadow:0 0 0 3px var(--accent); }
 
-.feed-item-reset { opacity:.75; border-style:dashed; }
+.feed-item-reset { opacity:.45; }
+.feed-name-reset { text-decoration:line-through; color:var(--muted); }
+.feed-workout-reset { color:var(--muted); font-style:italic; }
 .feed-reset-tag {
-  font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--accent); background:var(--accent-bg);
+  font-size:.62rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted); background:var(--bg2);
   padding:3px 8px; border-radius:4px;
+  display:inline-flex; align-items:center; gap:3px;
 }
 
 .bottom-pad { height:40px; }
@@ -671,7 +674,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v2.2 — 29. Apr 2026</div>
+  <div class="auth-version">v2.3 — 29. Apr 2026</div>
 </div>
 
 
@@ -1060,7 +1063,7 @@ async function loadFeed(){
   list.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:12px 0;">Lade Feed...</div>';
   try{
     var res = await supa.from('Feed')
-      .select('nickname,workout_name,minutes,created_at,user_id,last_badge,avatar_url')
+      .select('nickname,workout_name,minutes,created_at,user_id,last_badge,avatar_url,is_reset')
       .order('created_at', {ascending:false})
       .limit(30);
     if(res.error || !res.data || res.data.length === 0){
@@ -1089,11 +1092,13 @@ async function loadFeed(){
         return '<div class="feed-item feed-item-reset">'
           + avatarHtml
           + '<div class="feed-body">'
-          + '<div class="feed-name">' + (isMe ? 'Du' : nick) + '</div>'
-          + '<div class="feed-workout" style="color:var(--accent);">hat neu gestartet</div>'
+          + '<div class="feed-name feed-name-reset">' + (isMe ? 'Du' : nick) + '</div>'
+          + '<div class="feed-workout feed-workout-reset">' + item.workout_name + '</div>'
           + '</div>'
           + '<div class="feed-right">'
-          + '<div class="feed-reset-tag">Reset</div>'
+          + '<div class="feed-reset-tag" title="Nach Neustart ungültig">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:11px;height:11px;vertical-align:middle;margin-right:2px;"><path d="M3 12a9 9 0 109-9"/><polyline points="3,5 3,12 10,12"/></svg>'
+          + 'Reset</div>'
           + '<div class="feed-time">' + time + '</div>'
           + '</div>'
           + '</div>';
@@ -1182,7 +1187,6 @@ async function signOut(){
 
 async function resetProgress(){
   if(!confirm('Wirklich alle Fortschritte löschen und neu starten?')) return;
-  // Preserve profile data
   var savedNick = STATE.nickname || '';
   var savedAvatar = STATE.avatarUrl || '';
   STATE = defaultState();
@@ -1190,18 +1194,12 @@ async function resetProgress(){
   STATE.avatarUrl = savedAvatar;
   try{ localStorage.removeItem('rope_v3'); }catch(e){}
   if(currentUser){
-    // Post reset marker to feed
-    var nick = savedNick || currentUser.email.split('@')[0];
-    await supa.from('Feed').insert({
-      user_id: currentUser.id,
-      nickname: nick,
-      workout_name: '— Neustart —',
-      minutes: 0,
-      last_badge: null,
-      avatar_url: savedAvatar || null,
-      is_reset: true
-    });
-    // Save new state to cloud
+    // Mark all previous feed entries of this user as invalidated
+    await supa.from('Feed')
+      .update({ is_reset: true })
+      .eq('user_id', currentUser.id)
+      .eq('is_reset', false);
+    // Save reset state to cloud
     await supa.from('Profiles').update({
       data: STATE,
       updated_at: new Date().toISOString()
