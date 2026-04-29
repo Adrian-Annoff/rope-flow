@@ -27,9 +27,9 @@
   --text:     #1c1a17;
   --text2:    #4a4740;
   --muted:    #9a9590;
-  --accent:   #d4a800;
-  --accent-bg:#fdfae8;
-  --accent2:  #a07d00;
+  --accent:   #f5c800;
+  --accent-bg:#fef5b0;
+  --accent2:  #d4a800;
   --green:    #2a7a4a;
   --green-bg: #edf7f1;
   --blue:     #2c5f8a;
@@ -610,7 +610,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v1.5 — 29. Apr 2026</div>
+  <div class="auth-version">v1.7 — 29. Apr 2026</div>
 </div>
 
 
@@ -1028,7 +1028,13 @@ function renderToday(){
   var wk = getTodayWorkout();
   var template = wk.template;
   var h = now.getHours();
-  document.getElementById('today-greeting').innerHTML = h < 12 ? 'GUTEN<br><em>MORGEN</em>' : h < 18 ? 'LOS<br><em>GEHT\'S</em>' : 'ABEND-<br><em>WORKOUT</em>';
+  var nick = (STATE.nickname||'').trim();
+  var greetings = {
+    morning: nick ? 'GUTEN<br>MORGEN<br><em>'+nick.toUpperCase()+'</em>' : 'GUTEN<br><em>MORGEN</em>',
+    day:     nick ? 'LOS<br>GEHT\'S<br><em>'+nick.toUpperCase()+'</em>' : 'LOS<br><em>GEHT\'S</em>',
+    evening: nick ? 'ABEND-<br>WORKOUT<br><em>'+nick.toUpperCase()+'</em>' : 'ABEND-<br><em>WORKOUT</em>'
+  };
+  document.getElementById('today-greeting').innerHTML = h < 12 ? greetings.morning : h < 18 ? greetings.day : greetings.evening;
   var streak = getStreak(); STATE.streak = streak;
   document.getElementById('streak-num').textContent = streak;
 
