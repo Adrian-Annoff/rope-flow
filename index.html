@@ -383,7 +383,15 @@ nav {
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 .nav-user-wrap { display:flex; align-items:center; gap:6px; }
-.nav-user-name { font-size:.72rem; color:var(--muted); letter-spacing:.06em; }
+.nav-avatar {
+  width:26px; height:26px;
+  background:var(--text); color:var(--bg);
+  font-size:.75rem; font-weight:700; letter-spacing:.02em;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0;
+  transition:background .18s;
+}
+.nav-avatar:hover { background:var(--accent); }
 .signout-btn {
   margin-top:12px;
   background:none; border:1px solid var(--border);
@@ -402,6 +410,17 @@ nav {
   cursor:pointer; transition:all .18s; display:block;
 }
 .reset-btn:hover { border-color:#c0392b; color:#c0392b; }
+
+.repeat-workout-btn {
+  margin:0 20px 20px; width:calc(100% - 40px);
+  background:none; border:1px solid var(--border); color:var(--text2);
+  font-family:-apple-system,sans-serif; font-size:.82rem; font-weight:600;
+  letter-spacing:.08em; text-transform:uppercase;
+  padding:12px; cursor:pointer; transition:all .18s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.repeat-workout-btn:hover { border-color:var(--accent); color:var(--accent); }
+.repeat-workout-btn .btn-icon { width:14px; height:14px; }
 
 .bottom-pad { height:40px; }
 
@@ -435,7 +454,7 @@ nav {
     <button class="nav-tab" onclick="showView('profile',this)">Profil</button>
   </div>
   <div class="nav-user-wrap">
-    <span class="nav-user-name" id="nav-user-name"></span>
+    <div class="nav-avatar" id="nav-avatar" title="Profil"></div>
     <span class="sync-dot" id="sync-dot" title="Gespeichert"></span>
   </div>
 </nav>
@@ -711,7 +730,7 @@ var saveTimer = null;
 function defaultState(){
   return {startDate:new Date().toISOString().slice(0,10),currentPhase:0,totalSessions:0,
     totalMinutes:0,streak:0,maxStreak:0,earnedBadges:[],history:[],completedDays:{},
-    perfectWeeks:0,freestyleSessions:0};
+    perfectWeeks:0,freestyleSessions:0,repeatSessions:0};
 }
 
 function loadState(){ return defaultState(); }
@@ -857,6 +876,18 @@ function hideAuthScreen(){
   document.getElementById('auth-screen').classList.remove('active');
 }
 
+async function repeatWorkout(){
+  // Start workout again even if already done today — without marking as new session
+  var wk = getTodayWorkout();
+  var exercises = getExercises(wk.template.name);
+  T = {exercises:exercises, exIdx:0, round:1, seconds:3, total:3,
+    phase:'prep', running:true, interval:null, startTime:Date.now(), done:0, isRepeat:true};
+  document.getElementById('timer-overlay').classList.add('open');
+  updateTimerUI();
+  T.interval = setInterval(tick, 1000);
+  document.getElementById('t-main-btn').textContent = 'PAUSE';
+}
+
 async function signOut(){
   await supa.auth.signOut();
   currentUser = null;
@@ -964,6 +995,7 @@ function renderToday(){
   var btnLabel = done ? 'Heute erledigt' : 'WORKOUT STARTEN';
   var btnClass = 'start-workout-btn' + (done ? ' completed' : '');
   var btnDisabled = done ? 'disabled' : '';
+  var repeatBtn = done ? '<button class="repeat-workout-btn" onclick="repeatWorkout()"><span class="btn-icon">' + ICONS.reset + '</span>Wiederholen</button>' : '';
 
   box.innerHTML = '<div class="workout-card">'
     + '<div class="workout-card-header">'
@@ -975,7 +1007,8 @@ function renderToday(){
     + '</div>'
     + '<button class="' + btnClass + '" onclick="startWorkout()" ' + btnDisabled + '>'
     + '<span class="btn-icon">' + btnIcon + '</span>' + btnLabel
-    + '</button>';
+    + '</button>'
+    + (repeatBtn || '');
 }
 
 // TIMER
@@ -1151,8 +1184,8 @@ function showView(name,btn){
 supa.auth.onAuthStateChange(async function(event, session){
   if(session && session.user){
     currentUser = session.user;
-    var nu = document.getElementById('nav-user-name');
-    if(nu) nu.textContent = getDisplayName(session.user.email);
+    var nu = document.getElementById('nav-avatar');
+    if(nu) nu.textContent = session.user.email.charAt(0).toUpperCase();
     // Always load from cloud first, THEN render
     await loadFromCloud();
     hideAuthScreen();
@@ -1171,8 +1204,8 @@ document.addEventListener('DOMContentLoaded', async function(){
     var res = await supa.auth.getSession();
     if(res.data && res.data.session && res.data.session.user){
       currentUser = res.data.session.user;
-      var nu = document.getElementById('nav-user-name');
-      if(nu) nu.textContent = getDisplayName(res.data.session.user.email);
+      var nu = document.getElementById('nav-avatar');
+      if(nu) nu.textContent = res.data.session.user.email.charAt(0).toUpperCase();
       await loadFromCloud();
       hideAuthScreen();
       advancePlan();
