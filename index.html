@@ -382,6 +382,27 @@ nav {
 .sync-dot.syncing { background:var(--accent); animation:pulse .8s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
+.nav-user-wrap { display:flex; align-items:center; gap:6px; }
+.nav-user-name { font-size:.72rem; color:var(--muted); letter-spacing:.06em; }
+.signout-btn {
+  margin-top:12px;
+  background:none; border:1px solid var(--border);
+  color:var(--muted); font-family:-apple-system,sans-serif;
+  font-size:.72rem; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; padding:6px 14px;
+  cursor:pointer; transition:all .18s;
+}
+.signout-btn:hover { border-color:var(--accent); color:var(--accent); }
+.reset-btn {
+  margin-top:8px;
+  background:none; border:1px solid var(--border);
+  color:var(--muted); font-family:-apple-system,sans-serif;
+  font-size:.72rem; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; padding:6px 14px;
+  cursor:pointer; transition:all .18s; display:block;
+}
+.reset-btn:hover { border-color:#c0392b; color:#c0392b; }
+
 .bottom-pad { height:40px; }
 
 /* SVG icon helpers */
@@ -413,10 +434,10 @@ nav {
     <button class="nav-tab" onclick="showView('plan',this)">Plan</button>
     <button class="nav-tab" onclick="showView('profile',this)">Profil</button>
   </div>
-  <span class="nav-user" onclick="signOut()" title="Abmelden">
-    <span id="nav-user-email"></span>
+  <div class="nav-user-wrap">
+    <span class="nav-user-name" id="nav-user-name"></span>
     <span class="sync-dot" id="sync-dot" title="Gespeichert"></span>
-  </span>
+  </div>
 </nav>
 
 <div id="view-today" class="view active">
@@ -458,6 +479,8 @@ nav {
       <div class="profile-name">ROPE ATHLETE</div>
       <div class="profile-level" id="profile-level-text">Anfänger</div>
       <div class="profile-since" id="profile-since"></div>
+    <button class="signout-btn" onclick="signOut()">Abmelden</button>
+    <button class="reset-btn" onclick="resetProgress()">Neu starten</button>
     </div>
   </div>
   <div class="stats-grid">
@@ -840,6 +863,28 @@ async function signOut(){
   STATE = defaultState();
   showAuthScreen();
 }
+
+async function resetProgress(){
+  if(!confirm('Wirklich alle Fortschritte löschen und neu starten?')) return;
+  STATE = defaultState();
+  try{ localStorage.removeItem('rope_v3'); }catch(e){}
+  if(currentUser){
+    await supa.from('Profiles').update({
+      data: STATE,
+      updated_at: new Date().toISOString()
+    }).eq('user_id', currentUser.id);
+  }
+  renderProfile();
+  renderToday();
+  showView('today', document.querySelector('.nav-tab'));
+}
+
+function getDisplayName(email){
+  if(!email) return '';
+  // Take part before @ and capitalize first letter
+  var name = email.split('@')[0];
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
 let STATE=loadState();
 
 function todayStr(){return new Date().toISOString().slice(0,10);}
@@ -1106,8 +1151,8 @@ function showView(name,btn){
 supa.auth.onAuthStateChange(async function(event, session){
   if(session && session.user){
     currentUser = session.user;
-    var nu = document.getElementById('nav-user-email');
-    if(nu) nu.textContent = session.user.email;
+    var nu = document.getElementById('nav-user-name');
+    if(nu) nu.textContent = getDisplayName(session.user.email);
     // Always load from cloud first, THEN render
     await loadFromCloud();
     hideAuthScreen();
@@ -1126,8 +1171,8 @@ document.addEventListener('DOMContentLoaded', async function(){
     var res = await supa.auth.getSession();
     if(res.data && res.data.session && res.data.session.user){
       currentUser = res.data.session.user;
-      var nu = document.getElementById('nav-user-email');
-      if(nu) nu.textContent = res.data.session.user.email;
+      var nu = document.getElementById('nav-user-name');
+      if(nu) nu.textContent = getDisplayName(res.data.session.user.email);
       await loadFromCloud();
       hideAuthScreen();
       advancePlan();
