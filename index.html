@@ -664,7 +664,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v2.0 — 29. Apr 2026</div>
+  <div class="auth-version">v2.1 — 29. Apr 2026</div>
 </div>
 
 
@@ -1023,7 +1023,8 @@ async function postToFeed(workoutName, minutes, lastBadge){
       nickname: nick,
       workout_name: workoutName,
       minutes: minutes,
-      last_badge: lastBadge || null
+      last_badge: lastBadge || null,
+      avatar_url: STATE.avatarUrl || null
     });
   }catch(e){ console.error('Feed post error:', e); }
 }
@@ -1052,7 +1053,7 @@ async function loadFeed(){
   list.innerHTML = '<div style="color:var(--muted);font-size:.82rem;padding:12px 0;">Lade Feed...</div>';
   try{
     var res = await supa.from('Feed')
-      .select('nickname,workout_name,minutes,created_at,user_id,last_badge')
+      .select('nickname,workout_name,minutes,created_at,user_id,last_badge,avatar_url')
       .order('created_at', {ascending:false})
       .limit(30);
     if(res.error || !res.data || res.data.length === 0){
@@ -1071,8 +1072,14 @@ async function loadFeed(){
         var bd = BADGE_LOOKUP[item.last_badge];
         badgeHtml = '<div class="feed-badge">' + bd.icon + ' ' + bd.name + '</div>';
       }
+      var avatarHtml;
+      if(item.avatar_url){
+        avatarHtml = '<div class="feed-avatar" style="padding:0;overflow:hidden;"><img src="'+item.avatar_url+'" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;"></div>';
+      } else {
+        avatarHtml = '<div class="feed-avatar" style="background:'+avatarColor+';'+avatarText+'">'+letter+'</div>';
+      }
       return '<div class="feed-item">'
-        + '<div class="feed-avatar" style="background:'+avatarColor+';'+avatarText+'">' + letter + '</div>'
+        + avatarHtml
         + '<div class="feed-body">'
         + '<div class="feed-name">' + (isMe ? 'Du' : nick) + '</div>'
         + '<div class="feed-workout">' + item.workout_name + '</div>'
