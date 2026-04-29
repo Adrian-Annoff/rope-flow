@@ -390,6 +390,7 @@ nav {
   display:flex; align-items:center; justify-content:center;
   cursor:pointer; flex-shrink:0;
   transition:background .18s;
+  overflow:hidden; border-radius:0;
 }
 .nav-avatar:hover { background:var(--accent); }
 .signout-btn {
@@ -484,6 +485,17 @@ nav {
   padding:2px 8px;border-radius:4px;
 }
 
+.profile-avatar {
+  width:72px; height:72px;
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:Georgia,serif; font-size:1.8rem; font-weight:700;
+  color:var(--text2); flex-shrink:0;
+  transition:box-shadow .18s;
+}
+.profile-avatar:hover { box-shadow:0 0 0 3px var(--accent); }
+
 .bottom-pad { height:40px; }
 
 /* SVG icon helpers */
@@ -567,8 +579,10 @@ nav {
 
 <div id="view-profile" class="view">
   <div class="profile-header">
-    <div class="profile-avatar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;color:var(--muted)"><circle cx="12" cy="7" r="4"/><path d="M4 21c0-5 3.6-8 8-8s8 3 8 8"/></svg>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
+      <div class="profile-avatar" id="profile-avatar" onclick="document.getElementById('avatar-input').click()" title="Bild ändern" style="cursor:pointer;overflow:hidden;"></div>
+      <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this.files[0])">
+      <div style="font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);">Ändern</div>
     </div>
     <div>
       <div class="profile-name">ROPE ATHLETE</div>
@@ -650,7 +664,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v1.9 — 29. Apr 2026</div>
+  <div class="auth-version">v2.0 — 29. Apr 2026</div>
 </div>
 
 
@@ -818,7 +832,7 @@ var saveTimer = null;
 function defaultState(){
   return {startDate:new Date().toISOString().slice(0,10),currentPhase:0,totalSessions:0,
     totalMinutes:0,streak:0,maxStreak:0,earnedBadges:[],history:[],completedDays:{},
-    perfectWeeks:0,freestyleSessions:0,repeatSessions:0,nickname:''};
+    perfectWeeks:0,freestyleSessions:0,repeatSessions:0,nickname:'',avatarUrl:''};
 }
 
 function loadState(){ return defaultState(); }
@@ -1082,6 +1096,54 @@ function formatRelTime(isoStr){
   if(diff < 86400) return Math.floor(diff/3600) + ' Std';
   if(diff < 172800) return 'gestern';
   return new Date(isoStr).toLocaleDateString('de-DE',{day:'numeric',month:'short'});
+}
+
+async function uploadAvatar(file){
+  if(!currentUser || !file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if(!['jpg','jpeg','png','webp'].includes(ext)){
+    alert('Nur JPG, PNG oder WebP erlaubt.');
+    return;
+  }
+  if(file.size > 2*1024*1024){
+    alert('Bild muss kleiner als 2MB sein.');
+    return;
+  }
+  var path = currentUser.id + '/avatar.' + ext;
+  try{
+    var res = await supa.storage.from('avatars').upload(path, file, {upsert:true});
+    if(res.error){ console.error('Upload error:', res.error); return; }
+    var urlRes = supa.storage.from('avatars').getPublicUrl(path);
+    var url = urlRes.data.publicUrl + '?t=' + Date.now();
+    STATE.avatarUrl = url;
+    saveState();
+    renderAvatars();
+  }catch(e){ console.error('Avatar upload exception:', e); }
+}
+
+function renderAvatars(){
+  var url = STATE.avatarUrl;
+  var letter = currentUser ? currentUser.email.charAt(0).toUpperCase() : 'A';
+  // Nav avatar
+  var na = document.getElementById('nav-avatar');
+  if(na){
+    if(url){
+      na.innerHTML = '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;display:block;">';
+      na.style.padding = '0';
+    } else {
+      na.innerHTML = letter;
+      na.style.padding = '';
+    }
+  }
+  // Profile avatar
+  var pa = document.getElementById('profile-avatar');
+  if(pa){
+    if(url){
+      pa.innerHTML = '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">';
+    } else {
+      pa.textContent = letter;
+    }
+  }
 }
 
 async function signOut(){
@@ -1356,6 +1418,7 @@ function renderProfile(){
   const levels=['Blutiger Anfänger','Einsteiger','Schüler','Fortgeschrittener','Könner','Experte'];
   document.getElementById('profile-level-text').textContent=levels[Math.min(Math.floor(STATE.totalSessions/8),5)];
   document.getElementById('profile-since').textContent='Dabei seit '+new Date(STATE.startDate).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'});
+  renderAvatars();
   document.getElementById('stat-sessions').textContent=STATE.totalSessions;
   document.getElementById('stat-streak').textContent=streak;
   document.getElementById('stat-minutes').textContent=STATE.totalMinutes;
@@ -1398,6 +1461,7 @@ supa.auth.onAuthStateChange(async function(event, session){
     // Always load from cloud first, THEN render
     await loadFromCloud();
     hideAuthScreen();
+    renderAvatars();
     advancePlan();
     renderToday();
   } else {
