@@ -674,7 +674,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v2.3 — 29. Apr 2026</div>
+  <div class="auth-version">v2.4 — 29. Apr 2026</div>
 </div>
 
 
@@ -1195,10 +1195,11 @@ async function resetProgress(){
   try{ localStorage.removeItem('rope_v3'); }catch(e){}
   if(currentUser){
     // Mark all previous feed entries of this user as invalidated
+    // Mark all non-reset entries as invalid (catches both false and null)
     await supa.from('Feed')
       .update({ is_reset: true })
       .eq('user_id', currentUser.id)
-      .eq('is_reset', false);
+      .or('is_reset.eq.false,is_reset.is.null');
     // Save reset state to cloud
     await supa.from('Profiles').update({
       data: STATE,
