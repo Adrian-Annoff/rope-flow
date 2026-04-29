@@ -439,6 +439,25 @@ nav {
   color:var(--border2); text-align:center;
 }
 
+.nickname-wrap {
+  display:flex; gap:8px; margin-top:14px; align-items:center;
+}
+.nickname-input {
+  flex:1; padding:8px 12px;
+  border:1px solid var(--border); background:var(--surface);
+  font-family:-apple-system,sans-serif; font-size:.85rem; color:var(--text);
+  outline:none; transition:border-color .18s;
+}
+.nickname-input:focus { border-color:var(--accent); }
+.nickname-input::placeholder { color:var(--muted); }
+.nickname-save-btn {
+  background:var(--accent); border:none; color:#1c1a17;
+  font-family:-apple-system,sans-serif; font-size:.75rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase;
+  padding:8px 14px; cursor:pointer; transition:all .18s; white-space:nowrap;
+}
+.nickname-save-btn:hover { background:var(--accent2); color:#fff; }
+
 .bottom-pad { height:40px; }
 
 /* SVG icon helpers */
@@ -515,6 +534,10 @@ nav {
       <div class="profile-name">ROPE ATHLETE</div>
       <div class="profile-level" id="profile-level-text">Anfänger</div>
       <div class="profile-since" id="profile-since"></div>
+    <div class="nickname-wrap">
+      <input class="nickname-input" id="nickname-input" type="text" placeholder="Nickname eingeben..." maxlength="20">
+      <button class="nickname-save-btn" onclick="saveNickname()">Speichern</button>
+    </div>
     <button class="signout-btn" onclick="signOut()">Abmelden</button>
     <button class="reset-btn" onclick="resetProgress()">Neu starten</button>
     </div>
@@ -587,7 +610,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v1.4 — 29. Apr 2026</div>
+  <div class="auth-version">v1.5 — 29. Apr 2026</div>
 </div>
 
 
@@ -755,7 +778,7 @@ var saveTimer = null;
 function defaultState(){
   return {startDate:new Date().toISOString().slice(0,10),currentPhase:0,totalSessions:0,
     totalMinutes:0,streak:0,maxStreak:0,earnedBadges:[],history:[],completedDays:{},
-    perfectWeeks:0,freestyleSessions:0,repeatSessions:0};
+    perfectWeeks:0,freestyleSessions:0,repeatSessions:0,nickname:''};
 }
 
 function loadState(){ return defaultState(); }
@@ -841,6 +864,18 @@ function switchAuthTab(mode, btn){
   document.getElementById('auth-password').placeholder = mode === 'login' ? 'Passwort' : 'Passwort (min. 6 Zeichen)';
   document.getElementById('auth-msg').textContent = '';
   document.getElementById('auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+}
+
+function saveNickname(){
+  var input = document.getElementById('nickname-input');
+  var val = input.value.trim();
+  STATE.nickname = val;
+  saveState();
+  renderToday();
+  // Visual feedback
+  var btn = document.querySelector('.nickname-save-btn');
+  btn.textContent = 'Gespeichert!';
+  setTimeout(function(){ btn.textContent = 'Speichern'; }, 1500);
 }
 
 function togglePw(){
@@ -1191,6 +1226,8 @@ function renderProfile(){
   document.getElementById('stat-streak').textContent=streak;
   document.getElementById('stat-minutes').textContent=STATE.totalMinutes;
   document.getElementById('stat-week').textContent=Math.floor((new Date()-new Date(STATE.startDate))/(7*86400000))+1;
+  var ni = document.getElementById('nickname-input');
+  if(ni) ni.value = STATE.nickname || '';
   document.getElementById('badges-grid').innerHTML=ALL_BADGES.map(b=>{
     const e=STATE.earnedBadges.includes(b.id);
     return`<div class="badge-item${e?' earned':''}"><div class="badge-icon${e?'':' badge-locked'}">${ICONS[b.icon]||''}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div></div>`;
