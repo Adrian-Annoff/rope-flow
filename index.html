@@ -496,6 +496,13 @@ nav {
 }
 .profile-avatar:hover { box-shadow:0 0 0 3px var(--accent); }
 
+.feed-item-reset { opacity:.75; border-style:dashed; }
+.feed-reset-tag {
+  font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--accent); background:var(--accent-bg);
+  padding:3px 8px; border-radius:4px;
+}
+
 .bottom-pad { height:40px; }
 
 /* SVG icon helpers */
@@ -664,7 +671,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v2.1 — 29. Apr 2026</div>
+  <div class="auth-version">v2.2 — 29. Apr 2026</div>
 </div>
 
 
@@ -1078,6 +1085,19 @@ async function loadFeed(){
       } else {
         avatarHtml = '<div class="feed-avatar" style="background:'+avatarColor+';'+avatarText+'">'+letter+'</div>';
       }
+      if(item.is_reset){
+        return '<div class="feed-item feed-item-reset">'
+          + avatarHtml
+          + '<div class="feed-body">'
+          + '<div class="feed-name">' + (isMe ? 'Du' : nick) + '</div>'
+          + '<div class="feed-workout" style="color:var(--accent);">hat neu gestartet</div>'
+          + '</div>'
+          + '<div class="feed-right">'
+          + '<div class="feed-reset-tag">Reset</div>'
+          + '<div class="feed-time">' + time + '</div>'
+          + '</div>'
+          + '</div>';
+      }
       return '<div class="feed-item">'
         + avatarHtml
         + '<div class="feed-body">'
@@ -1162,9 +1182,26 @@ async function signOut(){
 
 async function resetProgress(){
   if(!confirm('Wirklich alle Fortschritte löschen und neu starten?')) return;
+  // Preserve profile data
+  var savedNick = STATE.nickname || '';
+  var savedAvatar = STATE.avatarUrl || '';
   STATE = defaultState();
+  STATE.nickname = savedNick;
+  STATE.avatarUrl = savedAvatar;
   try{ localStorage.removeItem('rope_v3'); }catch(e){}
   if(currentUser){
+    // Post reset marker to feed
+    var nick = savedNick || currentUser.email.split('@')[0];
+    await supa.from('Feed').insert({
+      user_id: currentUser.id,
+      nickname: nick,
+      workout_name: '— Neustart —',
+      minutes: 0,
+      last_badge: null,
+      avatar_url: savedAvatar || null,
+      is_reset: true
+    });
+    // Save new state to cloud
     await supa.from('Profiles').update({
       data: STATE,
       updated_at: new Date().toISOString()
