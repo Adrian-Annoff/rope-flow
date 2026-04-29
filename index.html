@@ -422,6 +422,17 @@ nav {
 .repeat-workout-btn:hover { border-color:var(--accent); color:var(--accent); }
 .repeat-workout-btn .btn-icon { width:14px; height:14px; }
 
+.pw-wrap { position:relative; width:100%; }
+.pw-input { width:100%; padding-right:44px; }
+.pw-toggle {
+  position:absolute; right:0; top:0; bottom:0;
+  width:44px; background:none; border:none;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted); transition:color .18s;
+}
+.pw-toggle:hover { color:var(--text); }
+.pw-toggle svg { width:18px; height:18px; }
+
 .bottom-pad { height:40px; }
 
 /* SVG icon helpers */
@@ -561,7 +572,12 @@ nav {
   </div>
   <div class="auth-form" id="auth-form">
     <input class="auth-input" type="email" id="auth-email" placeholder="E-Mail" autocomplete="email">
-    <input class="auth-input" type="password" id="auth-password" placeholder="Passwort" autocomplete="current-password">
+    <div class="pw-wrap">
+      <input class="auth-input pw-input" type="password" id="auth-password" placeholder="Passwort" autocomplete="current-password">
+      <button class="pw-toggle" type="button" onclick="togglePw()" id="pw-toggle-btn" title="Passwort anzeigen">
+        <svg id="pw-eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
@@ -717,6 +733,8 @@ const ALL_BADGES=[
   {id:'phase3',     icon:'rocket',  name:'Profi-Modus',   desc:'Phase 3 erreicht',    cond:s=>s.currentPhase>=2},
   {id:'perfectweek',icon:'star',    name:'Perf. Woche',   desc:'5× in einer Woche',  cond:s=>s.perfectWeeks>=1},
   {id:'freestyle',  icon:'paint',   name:'Freistil',      desc:'Freestyle Session',   cond:s=>s.freestyleSessions>=1},
+  {id:'repeat1',    icon:'reset',   name:'Wiederholt',    desc:'1x wiederholt',        cond:function(s){return (s.repeatSessions||0)>=1;}},
+  {id:'repeat5',    icon:'bolt',    name:'Unerмüdlich',  desc:'5x wiederholt',        cond:function(s){return (s.repeatSessions||0)>=5;}},
 ];
 
 // ── SUPABASE ──────────────────────────────────────────────────────────────────
@@ -816,6 +834,18 @@ function switchAuthTab(mode, btn){
   document.getElementById('auth-password').placeholder = mode === 'login' ? 'Passwort' : 'Passwort (min. 6 Zeichen)';
   document.getElementById('auth-msg').textContent = '';
   document.getElementById('auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+}
+
+function togglePw(){
+  var input = document.getElementById('auth-password');
+  var icon = document.getElementById('pw-eye-icon');
+  if(input.type === 'password'){
+    input.type = 'text';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    input.type = 'password';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
 }
 
 async function authSubmit(){
