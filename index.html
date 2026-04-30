@@ -1194,12 +1194,15 @@ async function resetProgress(){
   STATE.avatarUrl = savedAvatar;
   try{ localStorage.removeItem('rope_v3'); }catch(e){}
   if(currentUser){
-    // Mark all previous feed entries of this user as invalidated
-    // Mark all non-reset entries as invalid (catches both false and null)
+    // Mark all previous feed entries as invalidated — two separate queries to be safe
     await supa.from('Feed')
       .update({ is_reset: true })
       .eq('user_id', currentUser.id)
-      .or('is_reset.eq.false,is_reset.is.null');
+      .eq('is_reset', false);
+    await supa.from('Feed')
+      .update({ is_reset: true })
+      .eq('user_id', currentUser.id)
+      .is('is_reset', null);
     // Save reset state to cloud
     await supa.from('Profiles').update({
       data: STATE,
