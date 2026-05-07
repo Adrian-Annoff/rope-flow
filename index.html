@@ -699,7 +699,7 @@ nav {
     <button class="auth-btn" id="auth-submit-btn" onclick="authSubmit()">ANMELDEN</button>
     <div class="auth-msg" id="auth-msg"></div>
   </div>
-  <div class="auth-version">v2.8 — 4. Mai 2026</div>
+  <div class="auth-version">v2.9 — 7. Mai 2026</div>
 </div>
 
 
@@ -1305,9 +1305,12 @@ function renderToday(){
   document.getElementById('streak-num').textContent = streak;
 
   var phase = getCurrentPhase();
-  var diffD = Math.floor((new Date() - new Date(STATE.startDate)) / 86400000);
-  var ps = STATE.currentPhase === 0 ? 0 : STATE.currentPhase === 1 ? 28 : 70;
-  var pct = Math.min(100, Math.round(((diffD - ps) / (phase.weeks * 7)) * 100));
+  // Progress based purely on completed sessions, not calendar days
+  var totalCompleted = Object.keys(STATE.completedDays).length;
+  var phaseSessionStart = STATE.currentPhase === 0 ? 0 : STATE.currentPhase === 1 ? 28 : 70;
+  var phaseSessionsTotal = phase.weeks * 7;
+  var sessionsInPhase = totalCompleted - phaseSessionStart;
+  var pct = Math.min(100, Math.max(0, Math.round((sessionsInPhase / phaseSessionsTotal) * 100)));
   document.getElementById('phase-tag').textContent = phase.tag;
   document.getElementById('phase-name').textContent = phase.name;
   document.getElementById('phase-progress-label').textContent = 'Fortschritt ' + pct + '%';
